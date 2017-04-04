@@ -1,46 +1,20 @@
 #Python file for all the code for the Insight Data Engineering Coding Challenge
 #File name for the log.txt file
-data_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_input/log_sample.txt"
+data_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_input/log.txt"
 hosts_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_output/hosts.txt"
 resources_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_output/resources.txt"
+blocked_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_output/blocked.txt"
 
 #Important packages
 import csv
 import copy
+import math
+import datetime
 
-#Helper function to convert the string of month to a number but as a string
-#for easy appending to keep the placeholders
-def convert_month(month_str):
-	return_value=0
-	if month_str=="Jan":
-		return_value='01'
-	elif month_str=="Feb":
-		return_value='02'
-	elif month_str=="Mar":
-		return_value='03'
-	elif month_str=="Apr":
-		return_value='04'
-	elif month_str=="May":
-		return_value='05'
-	elif month_str=="Jun":
-		return_value='06'
-	elif month_str=="Jul":
-		return_value='07'
-	elif month_str=="Aug":
-		return_value='08'
-	elif month_str=="Sep":
-		return_value='09'
-	elif month_str=="Oct":
-		return_value='10'
-	elif month_str=="Nov":
-		return_value='11'
-	elif month_str=="Dec":
-		return_value='12'
-	
-	#Print an error if it doesn't match
-	if return_value==0:
-		print("Error month "+month_str+" does not exist")
-	return return_value
+
+month_str_int_dict={"Jan":'01',"Feb":"02","Mar":"03","Apr":"04","May":"05","Jun":"06","Jul":"07","Aug":"08","Sep":"09","Oct":"10","Nov":"11","Dec":"12"}
+
+month_num_days={"01":'31',"02":"28","03":"31","04":"30","05":"31","06":"30","07":"31","08":"31","09":"30","10":"31","11":"30","12":"31"}
 
 #Create a helper function to help convert the date-times to
 #time_value is in the form dd/mmm/yyyy:hh:mm::ss -400
@@ -53,31 +27,15 @@ def convert_time(time_value):
 	#the year
 	date_list=time_list[0].split("/")
 	
-	final_string=date_list[2]+convert_month(date_list[1])+date_list[0]+time_list[1]+time_list[2]+time_list[3]
+	final_string=date_list[2]+month_str_int_dict[date_list[1]]+date_list[0]+time_list[1]+time_list[2]+time_list[3]
 	
 	return final_string
-	
-#Function to add an hour to the time value; 
-#More complicated than just adding 10,000 since there are possibilities
-#that it bleeds over into the next day/year
-def add_one_hour(time_value):
-	
-	
 	
 def main(data_file):
 	#Import data from the given text file name
 	log_csv=[]
-	with open(data_file, encoding='utf-8') as f:
-		# reader = csv.reader(f, skipinitialspace=True, quoting=csv.QUOTE_NONE,delimiter=" ")
-		# next(reader) #skip header
-		# try:
-			# for row in reader:
-				# #append the row into the list
-				# log_csv.append(row)
-
-		# except csv.Error as e:
-			# sys.exit('file {}, line {}: {}'.format(data_file, reader.line_num, e))
-		#header
+	with open(data_file, encoding='iso-8859-1') as f:
+		#header line
 		reader=f.readline()
 		
 		#first line
@@ -98,10 +56,6 @@ def main(data_file):
 					check_quote=0
 					#Don't append the quotes
 					#the string is complete so append it to the index
-					#temp_list.append(temp_string)
-					#temp_string=""
-					#temp_index.append(copy.deepcopy(temp_list))
-					#temp_list=[]
 					temp_index.append(temp_string)
 					temp_string=""
 					#Need to skip the space after the end quote as well
@@ -115,8 +69,6 @@ def main(data_file):
 				elif reader[iterator]==" " and check_quote==1:
 					#Append the space to the string
 					#Don't clear temp_string yet
-					#temp_list.append(temp_string)
-					#temp_string=""
 					temp_string=temp_string+reader[iterator]
 					iterator=iterator+1
 				#If we're at the end of the line
@@ -206,7 +158,6 @@ def main(data_file):
 	
 	#Create the dictionary for each resource
 	resource_dictionary=dict()
-	#xxxxxxxxxxxx
 	#calculating this for now so that the code can be written; sub later
 	last_index=len(log_csv[0])-1
 	third_last_index=len(log_csv[0])-3
@@ -275,24 +226,25 @@ def main(data_file):
 					break
 
 	#Feature 3
-	#Super naive way: Make each distinct time a key and then count 
-	#the number of access points within an hour of that time
-	#We don't assume that the log file is in chronological order, 
-	#even though log files usually are and briefly spot checking 
-	#some dates seem to show that it is.
+	#Assume that log files are in chronological order
+	#so for each time value we want to know how many requests are made
 	
 	#For each time stamp (index 3), if it's not in the dictionary, then add it
 	full_time_dictionary=dict()
-	for i in range(0,len(log_csv)):
-		time_key=convert_time(log_csv[i][3])
+	#iterator is the overall iterator for each row
+	iterator=0
+	while iterator<len(log_csv):
+		time_key=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
 		if time_key not in full_time_dictionary.keys():
 			full_time_dictionary[time_key]=0
-	
-	#Go through each log entry and see if it is in the correct range
-	for key in full_time_dictionary.keys():
-		for i in range(0,len(log_csv)):
-			if log_csv[i][3]>=key and log_csv[i][3]<add_one_hour(key):
-				full_time_dictionary[key]+=1
+			#count the number of access points from this point onward
+			#including the time_key
+			j=iterator
+			while j<len(log_csv) and datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")<=time_key+datetime.timedelta(hours=1):
+				full_time_dictionary[time_key]+=1
+				#need to increment the secondary iterator
+				j=j+1
+		iterator=iterator+1
 	
 	#Find the top 10
 	#Now we have to determine which time period has the most access points
@@ -333,7 +285,7 @@ def main(data_file):
 		for i in range(0,len(max_10_list)):
 			for key in max_10_dictionary.keys():
 				if max_10_dictionary[key]==max_10_list[i]: 
-					output_file.write(key)
+					output_file.write(datetime.datetime.strftime(key,"%d/%b/%Y:%H:%M:%S %z"))
 					output_file.write(" ")
 					output_file.write(str(max_10_dictionary[key]))
 					output_file.write("\n")
@@ -341,14 +293,45 @@ def main(data_file):
 					del max_10_dictionary[key]
 					#Also, stop searching
 					break
-	
-	#Version 2: Assume that the times are in chronological order
-	
 
-#Feature 4
-#Write out Feature 4
+	#Feature 4
+	#for each log item, if it's a bad login (error code 401)
+	#index for the error code is second from the last
+	with open(blocked_file, 'w') as output_file: 
+		error_code_index=len(log_csv[1])-2
+		for i in range(0,len(log_csv)):
+			current_time=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
+			failed_counter=0
+			if log_csv[i][error_code_index]=='401':
+				#Hold on to the host and the site
+				check_host=log_csv[i][0]
+				check_site=log_csv[i][4]
+				#Start searching from here
+				j=i
+				check_time=datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")
+				while check_time<=current_time+datetime.timedelta(seconds=20) and j<(len(log_csv)-2):
+					#Count the number of failures if it's the same host
+					if log_csv[j][0]==check_host and log_csv[j][4]==check_site and log_csv[j][error_code_index]=='401':
+						failed_counter+=1
+						#If we hit 3 in 20 seconds, then record all following the third value
+						k=j+1
+						k_time=datetime.datetime.strptime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z")
+						if failed_counter==3:
+							#Keep going from now until 5 minutes
+							#Need to keep track of this iterator
+							while k_time<=check_time+datetime.timedelta(minutes=5):
+								#Write item by item to file
+								for it in range(0,len(log_csv[k])):
+									output_file.write(log_csv[k][it])
+								k=k+1
+								k_time=datetime.datetime.strptime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z")
+					#break if it's the same host and site and there is a successful login
+					elif log_csv[i][0]==check_host and log_csv[i][4]==check_site and log_csv[i][error_code_index]!='401':
+						break
+					j=j+1
+					check_time=datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")
 
 
-#Call the main
+#Call the main function
 if __name__ == '__main__':
 	main(data_file)
