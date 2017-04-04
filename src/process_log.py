@@ -1,23 +1,26 @@
 #Python file for all the code for the Insight Data Engineering Coding Challenge
-#File name for the log.txt file
-data_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_input/log.txt"
-hosts_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_output/hosts.txt"
-resources_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_output/resources.txt"
-blocked_file="C:/Users/glori/Documents/GitHub/fansite-analytics-challenge/log_output/blocked.txt"
 
 #Important packages
 import csv
 import copy
 import math
 import datetime
-	
-def main(data_file):
+import argparse
+
+def main():
+	parser = argparse.ArgumentParser(description='Script for Insight Data Challenge')
+	parser.add_argument('data_file', help='path to data_file')
+	parser.add_argument('hosts_file', help='path to hosts')
+	parser.add_argument('resources_file', help='path to resources_file')
+	parser.add_argument('hours_file', help='path to hours_file')
+	parser.add_argument('blocked_file', help='path to blocked_file')
+	args = parser.parse_args()
 	#Import data from the given text file name
 	log_csv=[]
-	with open(data_file, encoding='iso-8859-1') as f:
+	with open(args.data_file, encoding='iso-8859-1') as f:
 		#header line
 		reader=f.readline()
-		
+
 		#first line
 		reader=f.readline()
 		while reader!="":
@@ -57,7 +60,7 @@ def main(data_file):
 					iterator=iterator+1
 				else: #Regular letter
 					temp_string=temp_string+reader[iterator]
-					iterator=iterator+1				
+					iterator=iterator+1
 			log_csv.append(temp_index)
 			#Read the next line
 			reader=f.readline()
@@ -76,11 +79,11 @@ def main(data_file):
 		#and then assign it to have a count of 1
 		else:
 			host_count_dictionary[log_csv[i][0]]=1
-	
+
 	#Delete the empty key
 	if '' in host_count_dictionary.keys():
 		del host_count_dictionary['']
-			
+
 	#Now we have to determine which of the hosts have the highest count
 	max_10_list=[]
 	max_10_dictionary=dict()
@@ -111,16 +114,16 @@ def main(data_file):
 				#Now add the new (higher) value to the value list and the dictionary
 				max_10_list.append(host_count_dictionary[key])
 				max_10_dictionary[key]=host_count_dictionary[key]
-	
 
-	
+
+
 	#Write the results to a file, but in descending order
 	#First sort the value list in descending order
 	max_10_list.sort(reverse=True)
-	with open(resources_file, 'w') as output_file:
+	with open(args.hosts_file, 'w') as output_file:
 		for i in range(0,len(max_10_list)):
 			for key in max_10_dictionary.keys():
-				if max_10_dictionary[key]==max_10_list[i]: 
+				if max_10_dictionary[key]==max_10_list[i]:
 					output_file.write(key)
 					output_file.write(" ")
 					output_file.write(str(max_10_dictionary[key]))
@@ -129,13 +132,13 @@ def main(data_file):
 					del max_10_dictionary[key]
 					#Also, stop searching
 					break
-		
+
 	#Feature 2: Identify the 10 resources that consume the most bandwidth on the site
 	#Create the dictionary to sum up the activity
 	#bytes is the last index in the row; can be "-" which means 0
 	#resource is the third from last index in the row
 	#Need to split it by spaces and pick index 1
-	
+
 	#Create the dictionary for each resource
 	resource_dictionary=dict()
 	#calculating this for now so that the code can be written; sub later
@@ -154,11 +157,11 @@ def main(data_file):
 			resource_dictionary[resource]+=int(bytes)
 		else:
 			resource_dictionary[resource]=int(bytes)
-	
+
 	#Remove the empty key if it exists
 	if '' in resource_dictionary.keys():
 		del resource_dictionary['']
-	
+
 	#Now we have to determine which of the resources use the most bandwidth
 	max_10_list=[]
 	max_10_dictionary=dict()
@@ -188,14 +191,14 @@ def main(data_file):
 				#Now add the new (higher) value to the value list and the dictionary
 				max_10_list.append(resource_dictionary[key])
 				max_10_dictionary[key]=resource_dictionary[key]
-	
+
 	#Write the results to a file, but in descending order
 	#First sort the value list in descending order
 	max_10_list.sort(reverse=True)
-	with open(resources_file, 'w') as output_file:
+	with open(args.resources_file, 'w') as output_file:
 		for i in range(0,len(max_10_list)):
 			for key in max_10_dictionary.keys():
-				if max_10_dictionary[key]==max_10_list[i]: 
+				if max_10_dictionary[key]==max_10_list[i]:
 					output_file.write(key)
 					output_file.write(" ")
 					output_file.write(str(max_10_dictionary[key]))
@@ -208,7 +211,7 @@ def main(data_file):
 	#Feature 3
 	#Assume that log files are in chronological order
 	#so for each time value we want to know how many requests are made
-	
+
 	#For each time stamp (index 3), if it's not in the dictionary, then add it
 	full_time_dictionary=dict()
 	#iterator is the overall iterator for each row
@@ -225,7 +228,7 @@ def main(data_file):
 				#need to increment the secondary iterator
 				j=j+1
 		iterator=iterator+1
-	
+
 	#Find the top 10
 	#Now we have to determine which time period has the most access points
 	max_10_list=[]
@@ -256,15 +259,15 @@ def main(data_file):
 						break
 				#Now add the new (higher) value to the value list and the dictionary
 				max_10_list.append(full_time_dictionary[key])
-				max_10_dictionary[key]=full_time_dictionary[key]	
-				
+				max_10_dictionary[key]=full_time_dictionary[key]
+
 	#Write the results to a file, but in descending order
 	#First sort the value list in descending order
 	max_10_list.sort(reverse=True)
-	with open(resources_file, 'w') as output_file:
+	with open(args.hours_file, 'w') as output_file:
 		for i in range(0,len(max_10_list)):
 			for key in max_10_dictionary.keys():
-				if max_10_dictionary[key]==max_10_list[i]: 
+				if max_10_dictionary[key]==max_10_list[i]:
 					output_file.write(datetime.datetime.strftime(key,"%d/%b/%Y:%H:%M:%S %z"))
 					output_file.write(" ")
 					output_file.write(str(max_10_dictionary[key]))
@@ -273,11 +276,12 @@ def main(data_file):
 					del max_10_dictionary[key]
 					#Also, stop searching
 					break
+		output_file.write("\n")
 
 	#Feature 4
 	#for each log item, if it's a bad login (error code 401)
 	#index for the error code is second from the last
-	with open(blocked_file, 'w') as output_file: 
+	with open(args.blocked_file, 'w') as output_file:
 		error_code_index=len(log_csv[1])-2
 		for i in range(0,len(log_csv)):
 			current_time=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
@@ -303,6 +307,7 @@ def main(data_file):
 								#Write item by item to file
 								for it in range(0,len(log_csv[k])):
 									output_file.write(log_csv[k][it])
+								output_file.write("\n")
 								k=k+1
 								k_time=datetime.datetime.strptime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z")
 					#break if it's the same host and site and there is a successful login
@@ -314,4 +319,4 @@ def main(data_file):
 
 #Call the main function
 if __name__ == '__main__':
-	main(data_file)
+	main()
