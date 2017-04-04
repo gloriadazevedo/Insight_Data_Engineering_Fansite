@@ -10,26 +10,6 @@ import csv
 import copy
 import math
 import datetime
-
-
-month_str_int_dict={"Jan":'01',"Feb":"02","Mar":"03","Apr":"04","May":"05","Jun":"06","Jul":"07","Aug":"08","Sep":"09","Oct":"10","Nov":"11","Dec":"12"}
-
-month_num_days={"01":'31',"02":"28","03":"31","04":"30","05":"31","06":"30","07":"31","08":"31","09":"30","10":"31","11":"30","12":"31"}
-
-#Create a helper function to help convert the date-times to
-#time_value is in the form dd/mmm/yyyy:hh:mm::ss -400
-def convert_time(time_value):
-	#time_list yields the date at index 0, then the hours at index 1
-	#then the minutes at index 2 and the seconds at index 3
-	time_list=time_value.split(":")
-	
-	#date_list has the day first, then the month in string form, then 
-	#the year
-	date_list=time_list[0].split("/")
-	
-	final_string=date_list[2]+month_str_int_dict[date_list[1]]+date_list[0]+time_list[1]+time_list[2]+time_list[3]
-	
-	return final_string
 	
 def main(data_file):
 	#Import data from the given text file name
