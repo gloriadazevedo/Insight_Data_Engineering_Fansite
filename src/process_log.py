@@ -303,21 +303,27 @@ def main():
 	#Feature 4
 	#for each log item, if it's a bad login (error code 401)
 	#index for the error code is second from the last
-	with open(args.blocked_file, 'w') as output_file:
-		error_code_index=len(log_csv[1])-2
-		for i in range(0,len(log_csv)):
-			current_time=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
-			failed_counter=0
-			if log_csv[i][error_code_index]=='401':
-				#Hold on to the host and the site
-				check_host=log_csv[i][0]
-				check_site=log_csv[i][4]
-				#Start searching from here
-				j=i
+	#Add the indices to a dictionary whose key is a list of the host and the site
+	#the value is a list of the subsequent indices
+	index_list=[]
+	error_code_index=len(log_csv[1])-2
+	for i in range(0,len(log_csv)):
+		current_time=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
+		#Hold on to the host and the site
+		check_host=log_csv[i][0]
+		check_site=log_csv[i][4]
+		if i in index_list:
+			continue
+		#Check if it's already in the error dictionary
+		failed_counter=0
+		if log_csv[i][error_code_index]=='401':
+			#Start searching from here
+			j=i
+			check_time=datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")
+			while check_time<=current_time+datetime.timedelta(seconds=20) and j<(len(log_csv)-1):
 				check_time=datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")
-				while check_time<=current_time+datetime.timedelta(seconds=20) and j<(len(log_csv)-2):
-					#Count the number of failures if it's the same host
-					if log_csv[j][0]==check_host and log_csv[j][4]==check_site and log_csv[j][error_code_index]=='401':
+				#Count the number of failures if it's the same host
+				if log_csv[j][0]==check_host and log_csv[j][4]==check_site and log_csv[j][error_code_index]=='401':
 						failed_counter+=1
 						#If we hit 3 in 20 seconds, then record all following the third value
 						k=j+1
@@ -325,39 +331,42 @@ def main():
 						if failed_counter==3:
 							#Keep going from now until 5 minutes
 							#Need to keep track of this iterator
-							while k_time<=check_time+datetime.timedelta(minutes=5) and k<len(log_csv[k]):
-								#Write item by item to file
-								#write host
-								output_file.write(log_csv[k][0])
-								#Write two dashes
-								output_file.write(" ")
-								output_file.write(log_csv[k][1])
-								output_file.write(" ")
-								output_file.write(log_csv[k][2])
-								output_file.write(" ")
-								#Write the date
-								#output_file.write(datetime.datetime.strftime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z"))
-								output_file.write("[")
-								output_file.write(log_csv[k][3])
-								output_file.write("]")
-								output_file.write(" ")
-								output_file.write('"')
-								output_file.write(log_csv[k][4])
-								output_file.write('"')
-								output_file.write(" ")
-								output_file.write(log_csv[k][5])
-								output_file.write(" ")
-								output_file.write(log_csv[k][6])
-								output_file.write("\n")
-								k=k+1
+							while k_time<=check_time+datetime.timedelta(minutes=5) and k<len(log_csv):
 								k_time=datetime.datetime.strptime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z")
-					#break if it's the same host and site and there is a successful login
-					elif log_csv[i][0]==check_host and log_csv[i][4]==check_site and log_csv[i][error_code_index]!='401':
-						break
-					j=j+1
-					check_time=datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")
-		output_file.write("\n")
+								if log_csv[k][0]==check_host and log_csv[k][4]==check_site and k not in index_list:
+									index_list.append(k)
+								k=k+1
 
+				#break if it's the same host and site and there is a successful login
+				elif log_csv[i][0]==check_host and log_csv[i][4]==check_site and log_csv[i][error_code_index]!='401':
+					break
+				j=j+1
+	#Write all the error codes to the file
+	with open(args.blocked_file, 'w') as output_file:
+		for k in index_list:
+			#Write item by item to file
+			#write host
+			output_file.write(log_csv[k][0])
+			#Write two dashes
+			output_file.write(" ")
+			output_file.write(log_csv[k][1])
+			output_file.write(" ")
+			output_file.write(log_csv[k][2])
+			output_file.write(" ")
+			#Write the date
+			#output_file.write(datetime.datetime.strftime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z"))
+			output_file.write("[")
+			output_file.write(log_csv[k][3])
+			output_file.write("]")
+			output_file.write(" ")
+			output_file.write('"')
+			output_file.write(log_csv[k][4])
+			output_file.write('"')
+			output_file.write(" ")
+			output_file.write(log_csv[k][5])
+			output_file.write(" ")
+			output_file.write(log_csv[k][6])
+			output_file.write("\n")
 
 #Call the main function
 if __name__ == '__main__':
