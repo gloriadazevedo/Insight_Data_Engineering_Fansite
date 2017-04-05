@@ -6,6 +6,7 @@ import copy
 import math
 import datetime
 import argparse
+import collections
 
 def main():
 	parser = argparse.ArgumentParser(description='Script for Insight Data Challenge')
@@ -210,22 +211,30 @@ def main():
 				#need to increment the secondary iterator
 		#		j=j+1
 	min_time=datetime.datetime.strptime(log_csv[0][3],"%d/%b/%Y:%H:%M:%S %z")
-	#print(min_time)
 	max_time=datetime.datetime.strptime(log_csv[len(log_csv)-1][3],"%d/%b/%Y:%H:%M:%S %z")
-	#print(max_time)
 	time_counter=copy.deepcopy(min_time)
 	iterator=0
 	time_counter_counter=0
 	while time_counter<=max_time:
-		#add the key, guaranteed to not have a key
+		#add the key, guaranteed to not have a duplicate key
 		full_time_dictionary[time_counter]=0
 		iterator=time_counter_counter
 		#Count the number of occurrences
 		while iterator<len(log_csv) and datetime.datetime.strptime(log_csv[iterator][3],"%d/%b/%Y:%H:%M:%S %z")<=time_counter+datetime.timedelta(hours=1):
-			full_time_dictionary[time_counter]=full_time_dictionary[time_counter]+1
-			iterator=iterator+1
-		time_counter_counter=time_counter_counter+1
+			full_time_dictionary[time_counter]+=1
+			iterator+=1
+		#only increase the index counter if the next time in the list is larger than the time_counter
+		#print(log_csv[time_counter_counter][3])
+		#print(time_counter)
+		if time_counter_counter<len(log_csv)-1 and time_counter+datetime.timedelta(seconds=1)>datetime.datetime.strptime(log_csv[time_counter_counter][3],"%d/%b/%Y:%H:%M:%S %z"):
+			#print("TRUE")
+			time_counter_counter=time_counter_counter+1
+		#Increment by one second
 		time_counter=time_counter+datetime.timedelta(seconds=1)
+
+	#Delete the empty key from full_time_dictionary
+	if '' in full_time_dictionary.keys():
+		del full_time_dictionary['']
 
 	#Now we have to determine which hours had the most frequent visits
 	max_10_list=[]
@@ -251,7 +260,7 @@ def main():
 
 				for k in max_10_dictionary.keys():
 					#If the key had the min value then get rid of it
-				#remove the key corresponding to the smallest value
+					#remove the key corresponding to the smallest value
 					if max_10_dictionary[k]==min_value:
 						del max_10_dictionary[k]
 						break
@@ -261,15 +270,33 @@ def main():
 
 	#Write the results to a file, but in descending order
 	#First sort the value list in descending order
-	max_10_list.sort(reverse=True)
+	#If there are ties we need to print them in increasing time order
+	#The counter function makes a dictionary of the occurrences of each item
+	max_10_check=list(set(max_10_list))
+	full_list=dict()
+	for k in max_10_check:
+		temp_list=[]
+		for i in max_10_dictionary.keys():
+			if k==max_10_dictionary[i]:
+				temp_list.append(i)
+		#Sort the list
+		temp_list.sort()
+		full_list[k]=copy.deepcopy(temp_list)
+	if '' in full_list.keys():
+		del full_list['']
+
+	mini_list=list(set(max_10_list))
+	mini_list.sort(reverse=True)
 	with open(args.hours_file, 'w') as output_file:
-		for i in range(0,len(max_10_list)):
-			for key in max_10_dictionary.keys():
-				if max_10_dictionary[key]==max_10_list[i]:
-					output_file.write(datetime.datetime.strftime(key,"%d/%b/%Y:%H:%M:%S %z"))
-					output_file.write(",")
-					output_file.write(str(max_10_list[i]))
-					output_file.write("\n")
+		for i in range(0,len(mini_list)):
+			for key in full_list[mini_list[i]]:
+				output_file.write(datetime.datetime.strftime(key,"%d/%b/%Y:%H:%M:%S %z"))
+				output_file.write(",")
+				output_file.write(str(mini_list[i]))
+				output_file.write("\n")
+					#Have to delete that one in case there are duplicates
+				#	del max_10_dictionary[key]
+				#	break
 			#then delete the key so we search through less
 		output_file.write("\n")
 
