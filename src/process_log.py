@@ -11,15 +11,15 @@ def main():
 	parser = argparse.ArgumentParser(description='Script for Insight Data Challenge')
 	parser.add_argument('data_file', help='path to data_file')
 	parser.add_argument('hosts_file', help='path to hosts')
-	parser.add_argument('resources_file', help='path to resources_file')
 	parser.add_argument('hours_file', help='path to hours_file')
+	parser.add_argument('resources_file', help='path to resources_file')
 	parser.add_argument('blocked_file', help='path to blocked_file')
 	args = parser.parse_args()
 	#Import data from the given text file name
 	log_csv=[]
 	with open(args.data_file, encoding='iso-8859-1') as f:
 		#header line
-		reader=f.readline()
+		#reader=f.readline()
 
 		#first line
 		reader=f.readline()
@@ -74,7 +74,7 @@ def main():
 	for i in range(0,len(log_csv)):
 		#If we have seen the host key before, then increase the count by one
 		if log_csv[i][0] in host_count_dictionary.keys():
-			host_count_dictionary[log_csv[i][0]]+=1
+			host_count_dictionary[log_csv[i][0]]=host_count_dictionary[log_csv[i][0]]+1
 		#If we haven't seen the host key before then we add it to the dictonary keys
 		#and then assign it to have a count of 1
 		else:
@@ -96,42 +96,31 @@ def main():
 		#and add the key-value into the dictionary
 		if len(max_10_list)<10:
 			max_10_list.append(host_count_dictionary[key])
-			max_10_dictionary[key]=host_count_dictionary[key]
+			max_10_dictionary[host_count_dictionary[key]]=key
 		else:
 			#Save the min
 			min_value=min(max_10_list)
 			#check if the value is larger than the minimum value in the current 10
-			if host_count_dictionary[key]>min_value:
+			if key>min_value:
 				#first sort the values in the 10_list to get the min which is the index 0
 				max_10_list.sort()
 				#Rewrite the list without the smallest value
-				max_10_list=copy.deepcopy(max_10_list[1:9])
+				max_10_list=copy.deepcopy(max_10_list[1:10])
 				#remove the key corresponding to the smallest value
-				for check_key in max_10_dictionary.keys():
-					if max_10_dictionary[check_key]==min_value:
-						del max_10_dictionary[check_key]
-						break
+				del max_10_dictionary[min]
 				#Now add the new (higher) value to the value list and the dictionary
 				max_10_list.append(host_count_dictionary[key])
 				max_10_dictionary[key]=host_count_dictionary[key]
-
-
 
 	#Write the results to a file, but in descending order
 	#First sort the value list in descending order
 	max_10_list.sort(reverse=True)
 	with open(args.hosts_file, 'w') as output_file:
 		for i in range(0,len(max_10_list)):
-			for key in max_10_dictionary.keys():
-				if max_10_dictionary[key]==max_10_list[i]:
-					output_file.write(key)
-					output_file.write(" ")
-					output_file.write(str(max_10_dictionary[key]))
-					output_file.write("\n")
-					#then delete the key so we search through less
-					del max_10_dictionary[key]
-					#Also, stop searching
-					break
+			output_file.write(str(max_10_dictionary[max_10_list[i]]))
+			output_file.write(",")
+			output_file.write(str(max_10_list[i]))
+			output_file.write("\n")
 
 	#Feature 2: Identify the 10 resources that consume the most bandwidth on the site
 	#Create the dictionary to sum up the activity
@@ -173,21 +162,18 @@ def main():
 		#and add the key-value into the dictionary
 		if len(max_10_list)<10:
 			max_10_list.append(resource_dictionary[key])
-			max_10_dictionary[key]=resource_dictionary[key]
+			max_10_dictionary[resource_dictionary[key]]=key
 		else:
 			#Save the min
 			min_value=min(max_10_list)
 			#check if the value is larger than the minimum value in the current 10
-			if resource_dictionary[key]>min_value:
+			if key>min_value:
 				#first sort the values in the 10_list to get the min which is the index 0
 				max_10_list.sort()
 				#Rewrite the list without the smallest value
-				max_10_list=copy.deepcopy(max_10_list[1:9])
+				max_10_list=copy.deepcopy(max_10_list[1:10])
 				#remove the key corresponding to the smallest value
-				for check_key in max_10_dictionary.keys():
-					if max_10_dictionary[check_key]==min_value:
-						del max_10_dictionary[check_key]
-						break
+				del max_10_dictionary[min]
 				#Now add the new (higher) value to the value list and the dictionary
 				max_10_list.append(resource_dictionary[key])
 				max_10_dictionary[key]=resource_dictionary[key]
@@ -197,16 +183,11 @@ def main():
 	max_10_list.sort(reverse=True)
 	with open(args.resources_file, 'w') as output_file:
 		for i in range(0,len(max_10_list)):
-			for key in max_10_dictionary.keys():
-				if max_10_dictionary[key]==max_10_list[i]:
-					output_file.write(key)
-					output_file.write(" ")
-					output_file.write(str(max_10_dictionary[key]))
-					output_file.write("\n")
-					#then delete the key so we search through less
-					del max_10_dictionary[key]
-					#Also, stop searching
-					break
+			output_file.write(str(max_10_dictionary[max_10_list[i]]))
+			output_file.write("\n")
+			#then delete the key so we search through less
+			del max_10_dictionary[max_10_list[i]]
+
 
 	#Feature 3
 	#Assume that log files are in chronological order
@@ -214,29 +195,44 @@ def main():
 
 	#For each time stamp (index 3), if it's not in the dictionary, then add it
 	full_time_dictionary=dict()
-	#iterator is the overall iterator for each row
-	iterator=0
-	while iterator<len(log_csv):
-		time_key=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
-		if time_key not in full_time_dictionary.keys():
-			full_time_dictionary[time_key]=0
+	#This commented version only looks at hourly periods that have a request right at
+	#the beginning of the period to decrease the overall number of logs we would have to write
+	#and go through for the max
+	#for i in range(0,len(log_csv)):
+#		time_key=datetime.datetime.strptime(log_csv[i][3],"%d/%b/%Y:%H:%M:%S %z")
+		#if time_key not in full_time_dictionary.keys():
+		#	full_time_dictionary[time_key]=0
 			#count the number of access points from this point onward
 			#including the time_key
-			j=iterator
-			while j<len(log_csv) and datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")<=time_key+datetime.timedelta(hours=1):
-				full_time_dictionary[time_key]+=1
+		#	j=i
+		#	while j<len(log_csv) and datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")<=time_key+datetime.timedelta(hours=1):
+		#		full_time_dictionary[time_key]=full_time_dictionary[time_key]+1
 				#need to increment the secondary iterator
-				j=j+1
-		iterator=iterator+1
+		#		j=j+1
+	min_time=datetime.datetime.strptime(log_csv[0][3],"%d/%b/%Y:%H:%M:%S %z")
+	#print(min_time)
+	max_time=datetime.datetime.strptime(log_csv[len(log_csv)-1][3],"%d/%b/%Y:%H:%M:%S %z")
+	#print(max_time)
+	time_counter=copy.deepcopy(min_time)
+	iterator=0
+	time_counter_counter=0
+	while time_counter<=max_time:
+		#add the key, guaranteed to not have a key
+		full_time_dictionary[time_counter]=0
+		iterator=time_counter_counter
+		#Count the number of occurrences
+		while iterator<len(log_csv) and datetime.datetime.strptime(log_csv[iterator][3],"%d/%b/%Y:%H:%M:%S %z")<=time_counter+datetime.timedelta(hours=1):
+			full_time_dictionary[time_counter]=full_time_dictionary[time_counter]+1
+			iterator=iterator+1
+		time_counter_counter=time_counter_counter+1
+		time_counter=time_counter+datetime.timedelta(seconds=1)
 
-	#Find the top 10
-	#Now we have to determine which time period has the most access points
+	#Now we have to determine which hours had the most frequent visits
 	max_10_list=[]
 	max_10_dictionary=dict()
-	#Delete the empty key in max_10_dictionary
 	if '' in max_10_dictionary.keys():
 		del max_10_dictionary['']
-	#Have to go through each time and see if it's the top 10 rank
+	#Have to go through each resource and see if it's the top 10 rank
 	for key in full_time_dictionary.keys():
 		#If there aren't 10, then just add the value into the list
 		#and add the key-value into the dictionary
@@ -251,11 +247,13 @@ def main():
 				#first sort the values in the 10_list to get the min which is the index 0
 				max_10_list.sort()
 				#Rewrite the list without the smallest value
-				max_10_list=copy.deepcopy(max_10_list[1:9])
+				max_10_list=copy.deepcopy(max_10_list[1:10])
+
+				for k in max_10_dictionary.keys():
+					#If the key had the min value then get rid of it
 				#remove the key corresponding to the smallest value
-				for check_key in max_10_dictionary.keys():
-					if max_10_dictionary[check_key]==min_value:
-						del max_10_dictionary[check_key]
+					if max_10_dictionary[k]==min_value:
+						del max_10_dictionary[k]
 						break
 				#Now add the new (higher) value to the value list and the dictionary
 				max_10_list.append(full_time_dictionary[key])
@@ -269,13 +267,10 @@ def main():
 			for key in max_10_dictionary.keys():
 				if max_10_dictionary[key]==max_10_list[i]:
 					output_file.write(datetime.datetime.strftime(key,"%d/%b/%Y:%H:%M:%S %z"))
-					output_file.write(" ")
-					output_file.write(str(max_10_dictionary[key]))
+					output_file.write(",")
+					output_file.write(str(max_10_list[i]))
 					output_file.write("\n")
-					#then delete the key so we search through less
-					del max_10_dictionary[key]
-					#Also, stop searching
-					break
+			#then delete the key so we search through less
 		output_file.write("\n")
 
 	#Feature 4
@@ -303,10 +298,29 @@ def main():
 						if failed_counter==3:
 							#Keep going from now until 5 minutes
 							#Need to keep track of this iterator
-							while k_time<=check_time+datetime.timedelta(minutes=5):
+							while k_time<=check_time+datetime.timedelta(minutes=5) and k<len(log_csv[k]):
 								#Write item by item to file
-								for it in range(0,len(log_csv[k])):
-									output_file.write(log_csv[k][it])
+								#write host
+								output_file.write(log_csv[k][0])
+								#Write two dashes
+								output_file.write(" ")
+								output_file.write(log_csv[k][1])
+								output_file.write(" ")
+								output_file.write(log_csv[k][2])
+								output_file.write(" ")
+								#Write the date
+								#output_file.write(datetime.datetime.strftime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z"))
+								output_file.write("[")
+								output_file.write(log_csv[k][3])
+								output_file.write("]")
+								output_file.write(" ")
+								output_file.write('"')
+								output_file.write(log_csv[k][4])
+								output_file.write('"')
+								output_file.write(" ")
+								output_file.write(log_csv[k][5])
+								output_file.write(" ")
+								output_file.write(log_csv[k][6])
 								output_file.write("\n")
 								k=k+1
 								k_time=datetime.datetime.strptime(log_csv[k][3],"%d/%b/%Y:%H:%M:%S %z")
@@ -315,6 +329,7 @@ def main():
 						break
 					j=j+1
 					check_time=datetime.datetime.strptime(log_csv[j][3],"%d/%b/%Y:%H:%M:%S %z")
+		output_file.write("\n")
 
 
 #Call the main function
